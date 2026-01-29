@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HiteshAI Labs NNT 3D</title>
+    <link rel="icon" type="image/png" href="https://i.imgur.com/3TQgMBb.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Lexend', sans-serif;
+            background: #020408;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: rgba(2, 4, 8, 0.98);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 8px 20px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(58, 134, 255, 0.6);
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes logoPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(58, 134, 255, 0.6); }
+            50% { box-shadow: 0 0 30px rgba(255, 0, 110, 0.8), 0 0 40px rgba(58, 134, 255, 0.4); }
+        }
+
+        .title-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title {
+            font-size: 1.2em;
+            font-weight: 700;
+            background: linear-gradient(45deg, #ff006e, #8338ec, #3a86ff, #06ffa5);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 5s ease infinite;
+            letter-spacing: -0.5px;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .subtitle {
+            font-size: 0.65em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        select, button {
+            padding: 6px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 0.8em;
+            font-family: 'Lexend', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        select:hover, select:focus {
+            border-color: #3a86ff;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+        }
+
+        button {
+            background: linear-gradient(135deg, #8338ec, #3a86ff);
+            border: none;
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(131, 56, 236, 0.5);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 50px;
+            left: 0;
+            right: 0;
+            height: 82vh;
+            background: radial-gradient(circle at center, #0a1525 0%, #020408 100%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: grab;
+            overflow: hidden;
+        }
+
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .info-overlay {
+            position: fixed;
+            top: 65px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px;
+            z-index: 100;
+            min-width: 180px;
+            animation: slideInLeft 0.5s ease-out;
+        }
+
+        @keyframes slideInLeft {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .info-title {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #06ffa5;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 6px;
+            border-left: 2px solid #3a86ff;
+            transition: all 0.3s;
+        }
+
+        .stat-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .stat-value {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+            transition: color 0.3s;
+        }
+
+        .stat-value.active {
+            color: #06ffa5;
+            text-shadow: 0 0 10px rgba(6, 255, 165, 0.8);
+        }
+
+        .stat-label {
+            font-size: 0.6em;
+            color: #666;
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .controls-overlay {
+            position: fixed;
+            top: 65px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px;
+            z-index: 100;
+            min-width: 180px;
+            animation: slideInRight 0.5s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .control-item {
+            margin-bottom: 10px;
+        }
+
+        .control-label {
+            font-size: 0.7em;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff006e, #8338ec);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 0, 110, 0.5);
+        }
+
+        .control-hint {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 6px;
+            border-radius: 4px;
+            border-left: 2px solid #06ffa5;
+            font-size: 0.7em;
+            color: #888;
+            line-height: 1.4;
+        }
+
+        .reasoning-section {
+            position: fixed;
+            top: calc(50px + 82vh);
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #020408;
+            overflow-y: auto;
+            padding: 12px;
+            font-size: 0.85em;
+        }
+
+        .reasoning-section::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .reasoning-section::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .reasoning-section::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #8338ec, #3a86ff);
+            border-radius: 3px;
+        }
+
+        .reasoning-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .reasoning-header h2 {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .problem-display {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .problem-title {
+            font-size: 0.85em;
+            color: #888;
+            font-weight: 500;
+        }
+
+        .problem-equation {
+            font-size: 1.2em;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .reasoning-steps {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .step {
+            flex: 0 0 260px;
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 3px solid #3a86ff;
+            border-radius: 8px;
+            padding: 12px;
+            opacity: 0;
+            animation: slideUp 0.5s forwards;
+            transition: transform 0.3s;
+        }
+
+        .step:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        @keyframes slideUp {
+            to { opacity: 1; }
+        }
+
+        .step.active {
+            border-top-color: #06ffa5;
+            background: rgba(6, 255, 165, 0.1);
+            box-shadow: 0 0 20px rgba(6, 255, 165, 0.2);
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .step-number {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #ff006e, #8338ec);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.8em;
+            animation: pulseScale 2s infinite;
+        }
+
+        @keyframes pulseScale {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .step-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .step-content {
+            color: #aaa;
+            line-height: 1.5;
+            font-size: 0.8em;
+        }
+
+        .step-equation {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 6px 10px;
+            border-radius: 4px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            color: #06ffa5;
+            font-size: 0.85em;
+            border: 1px solid rgba(6, 255, 165, 0.3);
+            animation: glowPulse 2s infinite;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(6, 255, 165, 0.2); }
+            50% { box-shadow: 0 0 15px rgba(6, 255, 165, 0.5); }
+        }
+
+        .final-answer {
+            flex: 0 0 180px;
+            background: linear-gradient(135deg, rgba(131, 56, 236, 0.3), rgba(58, 134, 255, 0.3));
+            border: 2px solid #8338ec;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            animation: answerGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes answerGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(131, 56, 236, 0.4); }
+            50% { box-shadow: 0 0 40px rgba(131, 56, 236, 0.8), 0 0 60px rgba(58, 134, 255, 0.4); }
+        }
+
+        .answer-label {
+            font-size: 0.85em;
+            color: #ff006e;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .answer-value {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #020408;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .loading img {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            animation: spinScale 2s ease-in-out infinite;
+        }
+
+        @keyframes spinScale {
+            0% { transform: rotateY(0deg) scale(1); }
+            50% { transform: rotateY(180deg) scale(1.1); }
+            100% { transform: rotateY(360deg) scale(1); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #3a86ff;
+            font-weight: 500;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .fps-counter {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            color: #06ffa5;
+            font-family: monospace;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <img src="https://i.imgur.com/3TQgMBb.png" alt="HiteshAI">
+        <div class="loading-text">Initializing Neural Matrix...</div>
+    </div>
+
+    <div class="header">
+        <div class="logo-section">
+            <img src="https://i.imgur.com/3TQgMBb.png" alt="HiteshAI Logo" class="logo">
+            <div class="title-section">
+                <div class="title">HiteshAI Labs NNT</div>
+                <div class="subtitle">Neural Network Thinker</div>
+            </div>
+        </div>
+        <div class="controls">
+            <select id="problemSelect" onchange="selectProblem()">
+                <option value="quadratic">Quadratic Equation</option>
+                <option value="calculus">Advanced Calculus</option>
+                <option value="matrix">Matrix Operations</option>
+                <option value="integration">Complex Integration</option>
+                <option value="differential">Differential Equations</option>
+                <option value="fourier">Fourier Transform</option>
+            </select>
+            <button onclick="solveProblem()" id="solveBtn">Solve</button>
+            <button onclick="resetNetwork()" style="background: linear-gradient(135deg, #ff006e, #8338ec);">Reset</button>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div class="info-overlay">
+        <div class="info-title">⚡ Network Stats</div>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value" id="totalNeurons">0</div>
+                <div class="stat-label">Neurons</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalConnections">0</div>
+                <div class="stat-label">Links</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="activeNeurons">0</div>
+                <div class="stat-label">Active</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="processingTime">0ms</div>
+                <div class="stat-label">Time</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls-overlay">
+        <div class="info-title">🎮 Controls</div>
+        <div class="control-item">
+            <div class="control-label">
+                <span>Rotation</span>
+                <span id="autoRotValue">15%</span>
+            </div>
+            <input type="range" id="rotationSpeed" min="0" max="100" value="15" oninput="updateRotationSpeed(this.value)">
+        </div>
+        <div class="control-item">
+            <div class="control-label">
+                <span>Glow</span>
+                <span id="glowValue">70%</span>
+            </div>
+            <input type="range" id="glowIntensity" min="0" max="100" value="70" oninput="updateGlow(this.value)">
+        </div>
+        <div class="control-hint">
+            🖱️ Drag to rotate • Scroll to zoom • Right-drag to pan
+        </div>
+    </div>
+
+    <div class="reasoning-section">
+        <div class="reasoning-header">
+            <h2>Reasoning Process</h2>
+            <span style="color: #666; font-size: 0.8em;">Step-by-step solution</span>
+        </div>
+
+        <div class="problem-display" id="problemDisplay">
+            <div class="problem-title">Select a problem and click Solve</div>
+            <div class="problem-equation" style="display:none;"></div>
+        </div>
+
+        <div class="reasoning-steps" id="reasoningSteps"></div>
+    </div>
+
+    <div class="fps-counter" id="fpsCounter">FPS: 15</div>
+
+    <script>
+        const TARGET_FPS = 15;
+        const FRAME_INTERVAL = 1000 / TARGET_FPS;
+        let lastFrameTime = 0;
+        
+        let scene, camera, renderer, network3D;
+        let neurons = [];
+        let connections = [];
+        let dataPackets = [];
+        let shockwaves = [];
+        let starField;
+        let rotationSpeed = 0.0015;
+        let glowIntensity = 0.7;
+        let isProcessing = false;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let isRightDragging = false;
+        let time = 0;
+
+        // Architecture: 128 neurons
+        const architecture = [8, 16, 24, 32, 24, 16, 8];
+        
+        const layerColors = [
+            0x0066ff, 0x00ccff, 0x00ff66, 0xffcc00, 
+            0xff6600, 0xff0066, 0x9900ff
+        ];
+
+        class Neuron3D {
+            constructor(position, layer, index) {
+                const geometry = new THREE.SphereGeometry(0.65, 8, 8);
+                const color = layerColors[layer % layerColors.length];
+                
+                const material = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.position.copy(position);
+                this.originalPosition = position.clone();
+                
+                this.layer = layer;
+                this.index = index;
+                this.activation = 0;
+                this.targetActivation = 0;
+                this.baseColor = new THREE.Color(color);
+                this.pulsePhase = Math.random() * Math.PI * 2;
+            }
+
+            update(deltaTime) {
+                // Idle floating animation
+                if (!isProcessing && this.activation < 0.1) {
+                    const floatY = Math.sin(time * 0.001 + this.pulsePhase) * 0.3;
+                    const floatX = Math.cos(time * 0.0008 + this.pulsePhase) * 0.2;
+                    this.mesh.position.y = this.originalPosition.y + floatY;
+                    this.mesh.position.x = this.originalPosition.x + floatX;
+                }
+                
+                // Activation smoothing
+                this.activation += (this.targetActivation - this.activation) * 0.08;
+                
+                // Dynamic color based on activation
+                const brightness = 0.4 + (this.activation * 0.6 * glowIntensity);
+                this.mesh.material.opacity = Math.min(brightness, 1);
+                
+                // Scale pulse
+                const baseScale = 1 + (this.activation * 0.5);
+                const pulse = this.activation > 0.2 ? 
+                    Math.sin(time * 0.01 + this.pulsePhase) * 0.2 * this.activation : 0;
+                this.mesh.scale.setScalar(baseScale + pulse);
+                
+                // Color shift when active
+                if (this.activation > 0.5) {
+                    this.mesh.material.color.setHex(0xffffff);
+                } else {
+                    this.mesh.material.color.copy(this.baseColor);
+                }
+            }
+        }
+
+        class Connection3D {
+            constructor(from, to) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array([
+                    from.mesh.position.x, from.mesh.position.y, from.mesh.position.z,
+                    to.mesh.position.x, to.mesh.position.y, to.mesh.position.z
+                ]);
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                
+                const material = new THREE.LineBasicMaterial({
+                    color: 0x333333,
+                    transparent: true,
+                    opacity: 0.15
+                });
+                
+                this.line = new THREE.Line(geometry, material);
+                this.from = from;
+                this.to = to;
+                this.active = 0;
+                this.targetActive = 0;
+                this.pulseOffset = Math.random();
+            }
+
+            update() {
+                this.active += (this.targetActive - this.active) * 0.06;
+                
+                // Animated color flow
+                if (this.active > 0.1) {
+                    const hue = (time * 0.0005 + this.pulseOffset) % 1;
+                    const color = new THREE.Color().setHSL(hue, 1, 0.5);
+                    this.line.material.color.copy(color);
+                    this.line.material.opacity = this.active * 0.8;
+                } else {
+                    this.line.material.color.setHex(0x333333);
+                    this.line.material.opacity = 0.15;
+                }
+            }
+        }
+
+        class DataPacket {
+            constructor(startPos, endPos, color) {
+                const geometry = new THREE.SphereGeometry(0.25, 6, 6);
+                const material = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 1
+                });
+                
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.position.copy(startPos);
+                this.startPos = startPos;
+                this.endPos = endPos;
+                this.progress = 0;
+                this.speed = 0.02 + Math.random() * 0.02;
+                this.trail = [];
+                this.maxTrailLength = 8;
+                
+                scene.add(this.mesh);
+            }
+
+            update() {
+                this.progress += this.speed;
+                
+                if (this.progress >= 1) {
+                    this.destroy();
+                    return false;
+                }
+                
+                // Bezier curve movement
+                const midPoint = new THREE.Vector3()
+                    .addVectors(this.startPos, this.endPos)
+                    .multiplyScalar(0.5)
+                    .add(new THREE.Vector3(
+                        (Math.random() - 0.5) * 2,
+                        (Math.random() - 0.5) * 2,
+                        (Math.random() - 0.5) * 2
+                    ));
+                
+                const pos = new THREE.Vector3();
+                const t = this.progress;
+                pos.x = (1-t)*(1-t)*this.startPos.x + 2*(1-t)*t*midPoint.x + t*t*this.endPos.x;
+                pos.y = (1-t)*(1-t)*this.startPos.y + 2*(1-t)*t*midPoint.y + t*t*this.endPos.y;
+                pos.z = (1-t)*(1-t)*this.startPos.z + 2*(1-t)*t*midPoint.z + t*t*this.endPos.z;
+                
+                this.mesh.position.copy(pos);
+                
+                // Trail effect
+                this.trail.push(pos.clone());
+                if (this.trail.length > this.maxTrailLength) {
+                    this.trail.shift();
+                }
+                
+                // Scale down as it travels
+                this.mesh.scale.setScalar(1 - this.progress * 0.5);
+                
+                return true;
+            }
+
+            destroy() {
+                scene.remove(this.mesh);
+                this.mesh.geometry.dispose();
+                this.mesh.material.dispose();
+            }
+        }
+
+        class Shockwave {
+            constructor(position, color) {
+                const geometry = new THREE.RingGeometry(0.5, 0.8, 32);
+                const material = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.8,
+                    side: THREE.DoubleSide
+                });
+                
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.position.copy(position);
+                this.mesh.lookAt(camera.position);
+                this.age = 0;
+                this.maxAge = 60;
+                
+                scene.add(this.mesh);
+            }
+
+            update() {
+                this.age++;
+                const progress = this.age / this.maxAge;
+                
+                this.mesh.scale.setScalar(1 + progress * 5);
+                this.mesh.material.opacity = 0.8 * (1 - progress);
+                this.mesh.rotation.z += 0.1;
+                
+                if (this.age >= this.maxAge) {
+                    this.destroy();
+                    return false;
+                }
+                return true;
+            }
+
+            destroy() {
+                scene.remove(this.mesh);
+                this.mesh.geometry.dispose();
+                this.mesh.material.dispose();
+            }
+        }
+
+        function createStarField() {
+            const geometry = new THREE.BufferGeometry();
+            const count = 200;
+            const positions = new Float32Array(count * 3);
+            
+            for (let i = 0; i < count * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 200;
+                positions[i+1] = (Math.random() - 0.5) * 200;
+                positions[i+2] = (Math.random() - 0.5) * 100 - 50;
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const material = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.5,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            starField = new THREE.Points(geometry, material);
+            scene.add(starField);
+        }
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0x020408, 40, 180);
+
+            const container = document.getElementById('canvas-container');
+            camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 0, 65);
+
+            renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setClearColor(0x020408, 1);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            network3D = new THREE.Group();
+            scene.add(network3D);
+            
+            createStarField();
+
+            setupMouseControls(container);
+
+            window.addEventListener('resize', () => {
+                const container = document.getElementById('canvas-container');
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        function setupMouseControls(container) {
+            container.addEventListener('mousedown', (e) => {
+                if (e.button === 0) isDragging = true;
+                else if (e.button === 2) isRightDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+                    network3D.rotation.y += deltaX * 0.005;
+                    network3D.rotation.x += deltaY * 0.005;
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
+                } else if (isRightDragging) {
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+                    network3D.position.x += deltaX * 0.05;
+                    network3D.position.y -= deltaY * 0.05;
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            container.addEventListener('mouseup', () => {
+                isDragging = false;
+                isRightDragging = false;
+            });
+
+            container.addEventListener('mouseleave', () => {
+                isDragging = false;
+                isRightDragging = false;
+            });
+
+            container.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z += e.deltaY * 0.08;
+                camera.position.z = Math.max(30, Math.min(120, camera.position.z));
+            });
+        }
+
+        function createNetwork() {
+            const layerSpacing = 11;
+            const totalWidth = (architecture.length - 1) * layerSpacing;
+            const startX = -totalWidth / 2;
+
+            let totalNeuronCount = 0;
+            let totalConnectionCount = 0;
+
+            for (let l = 0; l < architecture.length; l++) {
+                const neuronsInLayer = architecture[l];
+                totalNeuronCount += neuronsInLayer;
+                const x = startX + l * layerSpacing;
+
+                const layerNeurons = [];
+                const cols = Math.ceil(Math.sqrt(neuronsInLayer));
+                const rows = Math.ceil(neuronsInLayer / cols);
+                const spacing = 3.2;
+                
+                for (let n = 0; n < neuronsInLayer; n++) {
+                    const row = Math.floor(n / cols);
+                    const col = n % cols;
+                    
+                    const y = (row - (rows-1)/2) * spacing;
+                    const z = (col - (cols-1)/2) * spacing;
+                    
+                    const position = new THREE.Vector3(x, y, z);
+                    const neuron = new Neuron3D(position, l, n);
+                    
+                    neurons.push(neuron);
+                    layerNeurons.push(neuron);
+                    network3D.add(neuron.mesh);
+                }
+
+                if (l > 0) {
+                    const prevLayerNeurons = neurons.filter(n => n.layer === l - 1);
+                    
+                    layerNeurons.forEach(neuron => {
+                        const connectionCount = Math.min(prevLayerNeurons.length, 3);
+                        const shuffled = [...prevLayerNeurons].sort(() => Math.random() - 0.5);
+                        
+                        for (let i = 0; i < connectionCount; i++) {
+                            const conn = new Connection3D(shuffled[i], neuron);
+                            connections.push(conn);
+                            network3D.add(conn.line);
+                            totalConnectionCount++;
+                        }
+                    });
+                }
+            }
+
+            document.getElementById('totalNeurons').textContent = totalNeuronCount;
+            document.getElementById('totalConnections').textContent = totalConnectionCount;
+
+            network3D.rotation.y = -0.4;
+            
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 1500);
+        }
+
+        function animate(currentTime) {
+            requestAnimationFrame(animate);
+            
+            if (currentTime - lastFrameTime < FRAME_INTERVAL) return;
+            lastFrameTime = currentTime;
+            time = currentTime;
+
+            // Auto rotation with sine wave variation
+            if (!isDragging && !isRightDragging && rotationSpeed > 0) {
+                network3D.rotation.y += rotationSpeed * Math.sin(time * 0.0005);
+                network3D.rotation.x = Math.sin(time * 0.0003) * 0.1;
+            }
+
+            // Update neurons
+            neurons.forEach(neuron => neuron.update());
+            
+            // Update connections
+            connections.forEach(conn => conn.update());
+            
+            // Update data packets
+            dataPackets = dataPackets.filter(packet => packet.update());
+            
+            // Update shockwaves
+            shockwaves = shockwaves.filter(sw => sw.update());
+            
+            // Animate starfield
+            if (starField) {
+                starField.rotation.y += 0.0002;
+                starField.rotation.x += 0.0001;
+            }
+
+            // Camera drift when idle
+            if (!isDragging && !isProcessing) {
+                camera.position.x = Math.sin(time * 0.0005) * 2;
+                camera.position.y = Math.cos(time * 0.0007) * 2;
+            }
+
+            // Update stats
+            const activeCount = neurons.filter(n => n.activation > 0.3).length;
+            const statElement = document.getElementById('activeNeurons');
+            statElement.textContent = activeCount;
+            statElement.classList.toggle('active', activeCount > 0);
+
+            renderer.render(scene, camera);
+        }
+
+        function updateRotationSpeed(value) {
+            rotationSpeed = (value / 100) * 0.008;
+            document.getElementById('autoRotValue').textContent = value + '%';
+        }
+
+        function updateGlow(value) {
+            glowIntensity = value / 100;
+            document.getElementById('glowValue').textContent = value + '%';
+        }
+
+        async function activateLayer(layerIndex, intensity) {
+            const layerNeurons = neurons.filter(n => n.layer === layerIndex);
+            const layerColor = layerColors[layerIndex % layerColors.length];
+            
+            // Create shockwave at layer center
+            const centerX = layerNeurons[0].mesh.position.x;
+            const shockwave = new Shockwave(
+                new THREE.Vector3(centerX, 0, 0), 
+                layerColor
+            );
+            shockwaves.push(shockwave);
+            
+            // Staggered activation with wave effect
+            layerNeurons.forEach((neuron, i) => {
+                setTimeout(() => {
+                    neuron.targetActivation = intensity * (0.7 + Math.random() * 0.3);
+                    
+                    // Spawn data packets to next layer
+                    if (layerIndex < architecture.length - 1) {
+                        const nextLayerNeurons = neurons.filter(n => n.layer === layerIndex + 1);
+                        const targets = nextLayerNeurons.sort(() => Math.random() - 0.5).slice(0, 2);
+                        
+                        targets.forEach(target => {
+                            const packet = new DataPacket(
+                                neuron.mesh.position,
+                                target.mesh.position,
+                                layerColor
+                            );
+                            dataPackets.push(packet);
+                        });
+                    }
+                }, i * 30); // 30ms stagger
+            });
+
+            // Camera zoom to active layer
+            const targetZ = 50 + (layerIndex * 2);
+            const startZ = camera.position.z;
+            const zoomDuration = 500;
+            const zoomStart = Date.now();
+            
+            function zoomCamera() {
+                const elapsed = Date.now() - zoomStart;
+                const progress = Math.min(elapsed / zoomDuration, 1);
+                camera.position.z = startZ + (targetZ - startZ) * progress;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(zoomCamera);
+                }
+            }
+            zoomCamera();
+
+            if (layerIndex > 0) {
+                connections.forEach(conn => {
+                    if (conn.to.layer === layerIndex) {
+                        setTimeout(() => {
+                            conn.targetActive = intensity * 0.9;
+                        }, Math.random() * 200);
+                    }
+                });
+            }
+        }
+
+        const problems = {
+            quadratic: {
+                title: "Quadratic Equation",
+                equation: "x² - 5x + 6 = 0",
+                latex: "x^2 - 5x + 6 = 0",
+                steps: [
+                    { title: "Parse Input", content: "Standard form ax² + bx + c = 0", eq: "a=1, b=-5, c=6" },
+                    { title: "Discriminant", content: "Δ = b² - 4ac", eq: "Δ = 25 - 24 = 1" },
+                    { title: "Apply Formula", content: "x = (-b ± √Δ) / 2a", eq: "x = (5 ± 1) / 2" },
+                    { title: "Solutions", content: "Calculate roots", eq: "x₁=3, x₂=2" },
+                ],
+                answer: "x = 2, 3"
+            },
+            calculus: {
+                title: "Advanced Calculus",
+                equation: "∫ x²·e^x dx",
+                latex: "\\int x^2 e^x dx",
+                steps: [
+                    { title: "Method", content: "Integration by parts", eq: "∫u dv = uv - ∫v du" },
+                    { title: "Setup", content: "u=x², dv=e^x dx", eq: "du=2x dx, v=e^x" },
+                    { title: "First Pass", content: "Apply formula", eq: "x²e^x - ∫2xe^x dx" },
+                    { title: "Second Pass", content: "Repeat IBP", eq: "x²e^x - 2xe^x + 2e^x" },
+                    { title: "Factor", content: "Simplify", eq: "e^x(x²-2x+2) + C" },
+                ],
+                answer: "e^x(x²-2x+2) + C"
+            },
+            matrix: {
+                title: "Matrix Multiply",
+                equation: "[2 3] × [1 4; 2 5]",
+                latex: "\\begin{bmatrix} 2 & 3 \\end{bmatrix} \\times \\begin{bmatrix} 1 & 4 \\\\ 2 & 5 \\end{bmatrix}",
+                steps: [
+                    { title: "Dimensions", content: "(1×2) · (2×2)", eq: "Result: (1×2)" },
+                    { title: "Position [1,1]", content: "2×1 + 3×2", eq: "2 + 6 = 8" },
+                    { title: "Position [1,2]", content: "2×4 + 3×5", eq: "8 + 15 = 23" },
+                    { title: "Result", content: "Final matrix", eq: "[8, 23]" },
+                ],
+                answer: "[8, 23]"
+            },
+            integration: {
+                title: "Integration",
+                equation: "∫ sin(x)/(1+cos²x) dx",
+                latex: "\\int \\frac{\\sin x}{1+\\cos^2 x} dx",
+                steps: [
+                    { title: "Substitute", content: "Let u = cos(x)", eq: "du = -sin(x)dx" },
+                    { title: "Rewrite", content: "Transform integral", eq: "-∫ du/(1+u²)" },
+                    { title: "Integrate", content: "Arctangent form", eq: "-arctan(u)" },
+                    { title: "Back-sub", content: "Replace u", eq: "-arctan(cos x) + C" },
+                ],
+                answer: "-arctan(cos x) + C"
+            },
+            differential: {
+                title: "Differential Eq",
+                equation: "dy/dx = y·sin(x)",
+                latex: "dy/dx = y \\sin x",
+                steps: [
+                    { title: "Separate", content: "Divide both sides", eq: "dy/y = sin(x)dx" },
+                    { title: "Integrate", content: "Both sides", eq: "ln|y| = -cos(x) + C" },
+                    { title: "Exponentiate", content: "Solve for y", eq: "y = e^(-cos x + C)" },
+                    { title: "Simplify", content: "Constant absorption", eq: "y = Ce^(-cos x)" },
+                ],
+                answer: "y = Ce^(-cos x)"
+            },
+            fourier: {
+                title: "Fourier Transform",
+                equation: "ℱ{e^(-|t|)}",
+                latex: "\\mathcal{F}\\{e^{-|t|}\\}",
+                steps: [
+                    { title: "Define", content: "F(ω) = ∫e^(-|t|)e^(-iωt)dt", eq: "Split: ∫₋∞⁰ + ∫₀^∞" },
+                    { title: "Left Side", content: "t < 0", eq: "1/(1-iω)" },
+                    { title: "Right Side", content: "t > 0", eq: "1/(1+iω)" },
+                    { title: "Combine", content: "Add fractions", eq: "2/(1+ω²)" },
+                ],
+                answer: "F(ω) = 2/(1+ω²)"
+            }
+        };
+
+        let currentProblem = null;
+        let startTime = 0;
+
+        function selectProblem() {
+            const select = document.getElementById('problemSelect');
+            currentProblem = problems[select.value];
+            displayProblem();
+        }
+
+        function displayProblem() {
+            if (!currentProblem) return;
+            
+            const display = document.getElementById('problemDisplay');
+            display.innerHTML = `
+                <div>
+                    <div class="problem-title">${currentProblem.title}</div>
+                    <div class="problem-equation">$$${currentProblem.latex}$$</div>
+                </div>
+            `;
+            
+            if (window.MathJax) {
+                MathJax.typesetPromise([display]).catch(err => console.log(err));
+            }
+
+            document.getElementById('reasoningSteps').innerHTML = '';
+        }
+
+        async function solveProblem() {
+            if (isProcessing || !currentProblem) return;
+            
+            isProcessing = true;
+            startTime = Date.now();
+            document.getElementById('solveBtn').disabled = true;
+            document.getElementById('reasoningSteps').innerHTML = '';
+
+            // Initial camera zoom in
+            const initialZ = camera.position.z;
+            camera.position.z = 45;
+
+            for (let layer = 0; layer < architecture.length; layer++) {
+                await activateLayer(layer, 0.9);
+                
+                if (layer < currentProblem.steps.length) {
+                    displayStep(currentProblem.steps[layer], layer);
+                }
+                
+                await sleep(600);
+            }
+
+            displayFinalAnswer();
+            updateMetrics();
+
+            // Reset camera
+            setTimeout(() => {
+                camera.position.z = initialZ;
+            }, 1000);
+
+            isProcessing = false;
+            document.getElementById('solveBtn').disabled = false;
+        }
+
+        function displayStep(step, index) {
+            const container = document.getElementById('reasoningSteps');
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'step active';
+            
+            stepDiv.innerHTML = `
+                <div class="step-header">
+                    <span class="step-number">${index + 1}</span>
+                    <span class="step-title">${step.title}</span>
+                </div>
+                <div class="step-content">
+                    ${step.content}
+                    <div class="step-equation">${step.eq}</div>
+                </div>
+            `;
+
+            container.appendChild(stepDiv);
+            stepDiv.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+            
+            setTimeout(() => stepDiv.classList.remove('active'), 1000);
+        }
+
+        function displayFinalAnswer() {
+            const container = document.getElementById('reasoningSteps');
+            const answerDiv = document.createElement('div');
+            answerDiv.className = 'final-answer';
+            
+            answerDiv.innerHTML = `
+                <div class="answer-label">✓ Solution</div>
+                <div class="answer-value">${currentProblem.answer}</div>
+            `;
+
+            container.appendChild(answerDiv);
+            answerDiv.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+            
+            // Victory shockwave
+            const centerNeuron = neurons[Math.floor(neurons.length / 2)];
+            const victoryWave = new Shockwave(centerNeuron.mesh.position, 0x06ffa5);
+            shockwaves.push(victoryWave);
+        }
+
+        function updateMetrics() {
+            const elapsed = Date.now() - startTime;
+            document.getElementById('processingTime').textContent = elapsed + 'ms';
+        }
+
+        function resetNetwork() {
+            // Implosion effect
+            neurons.forEach((n, i) => {
+                setTimeout(() => {
+                    n.targetActivation = 0;
+                    n.activation = 0;
+                    n.mesh.scale.setScalar(0.1);
+                    setTimeout(() => {
+                        n.mesh.scale.setScalar(1);
+                    }, 300);
+                }, i * 5);
+            });
+            
+            connections.forEach(c => {
+                c.targetActive = 0;
+                c.active = 0;
+            });
+            
+            // Clear animations
+            dataPackets.forEach(p => p.destroy());
+            dataPackets = [];
+            shockwaves.forEach(s => s.destroy());
+            shockwaves = [];
+            
+            document.getElementById('reasoningSteps').innerHTML = '';
+            document.getElementById('processingTime').textContent = '0ms';
+            
+            // Reset camera with animation
+            const startZ = camera.position.z;
+            const targetZ = 65;
+            let progress = 0;
+            function resetCam() {
+                progress += 0.05;
+                camera.position.z = startZ + (targetZ - startZ) * progress;
+                if (progress < 1) requestAnimationFrame(resetCam);
+            }
+            resetCam();
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Initialize
+        initThreeJS();
+        createNetwork();
+        animate(0);
+        selectProblem();
+    </script>
+</body>
+</html>
